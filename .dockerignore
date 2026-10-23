@@ -1,0 +1,10 @@
+.git
+.github
+.gitignore
+.vscode
+node_modules
+npm-debug.log
+obj/
+bin/
+docker-compose*
+README.md
