@@ -1,0 +1,51 @@
+name: CI/CD Continuous Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: Authenticate to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Secure Voting App
+        uses: docker/build-push-action@v5
+        with:
+          context: ./vote
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/vote:latest
+
+      - name: Build and Push Secure Results Dashboard
+        uses: docker/build-push-action@v5
+        with:
+          context: ./result
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/result:latest
+
+      - name: Configure AWS Access Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Synchronize Cluster Control Context
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name capstone-voting-cluster
+
+      - name: Deploy Secure Manifests to EKS Cluster
+        run: |
+          kubectl apply -f k8s-specifications/
